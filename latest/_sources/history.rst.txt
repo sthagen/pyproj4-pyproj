@@ -4,6 +4,8 @@ Change Log
 3.1.0
 -----
 * DEP: Minimum supported Python version 3.7 (issue #790)
+* REF: Multithread safe CRS (issue #782)
+* BUG: Disallow NaN values with AreaOfInterest & BBox (issue #788)
 
 3.0.1
 -----
