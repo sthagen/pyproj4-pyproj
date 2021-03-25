@@ -17,6 +17,7 @@ from pyproj._crs cimport (
 )
 from pyproj._datadir cimport pyproj_context_create, pyproj_context_destroy
 
+from pyproj._datadir import _LOGGER
 from pyproj.aoi import AreaOfInterest
 from pyproj.compat import cstrencode, pystrdecode
 from pyproj.enums import ProjVersion, TransformDirection
@@ -233,6 +234,72 @@ cdef _CRS get_transform_crs(_CRS in_crs):
     return in_crs.source_crs if in_crs.is_bound else in_crs
 
 
+cdef PJ* proj_create_crs_to_crs(
+    PJ_CONTEXT *ctx,
+    const char *source_crs_str,
+    const char *target_crs_str,
+    PJ_AREA *area,
+    authority,
+    accuracy,
+    allow_ballpark,
+):
+    """
+    This is the same as proj_create_crs_to_crs in proj.h
+    with the options added. It is a hack for stabilily
+    reasons.
+
+    Reference: https://github.com/pyproj4/pyproj/pull/800
+    """
+    cdef PJ *source_crs = proj_create(ctx, source_crs_str)
+    if source_crs == NULL:
+        _LOGGER.debug(
+            "PROJ_DEBUG: proj_create_crs_to_crs: Cannot instantiate source_crs"
+        )
+        return NULL
+    cdef PJ *target_crs = proj_create(ctx, target_crs_str)
+    if target_crs == NULL:
+        proj_destroy(source_crs)
+        _LOGGER.debug(
+            "PROJ_DEBUG: proj_create_crs_to_crs: Cannot instantiate target_crs"
+        )
+        return NULL
+
+    cdef const char* options[4]
+    cdef int options_index = 0
+    options[0] = NULL
+    options[1] = NULL
+    options[2] = NULL
+    options[3] = NULL
+    if authority is not None:
+        if PROJ_VERSION_MAJOR < 8:
+            warnings.warn("authority requires PROJ 8+")
+        b_authority = cstrencode(f"AUTHORITY={authority}")
+        options[options_index] = b_authority
+        options_index += 1
+    if accuracy is not None:
+        if PROJ_VERSION_MAJOR < 8:
+            warnings.warn("accuracy requires PROJ 8+")
+        b_accuracy = cstrencode(f"ACCURACY={accuracy}")
+        options[options_index] = b_accuracy
+        options_index += 1
+    if allow_ballpark is not None:
+        if PROJ_VERSION_MAJOR < 8:
+            warnings.warn("allow_ballpark requires PROJ 8+")
+        if not allow_ballpark:
+            options[options_index] = b"ALLOW_BALLPARK=NO"
+
+    cdef PJ* transform = proj_create_crs_to_crs_from_pj(
+        ctx,
+        source_crs,
+        target_crs,
+        area,
+        options,
+    )
+    proj_destroy(source_crs)
+    proj_destroy(target_crs)
+    return transform
+
+
 cdef class _Transformer(Base):
     def __cinit__(self):
         self._area_of_use = None
@@ -336,6 +403,9 @@ cdef class _Transformer(Base):
         skip_equivalent=False,
         always_xy=False,
         area_of_interest=None,
+        authority=None,
+        accuracy=None,
+        allow_ballpark=None,
     ):
         """
         Create a transformer from CRS objects
@@ -371,6 +441,9 @@ cdef class _Transformer(Base):
                 cstrencode(crs_from.srs),
                 cstrencode(crs_to.srs),
                 pj_area_of_interest,
+                authority=authority,
+                accuracy=accuracy,
+                allow_ballpark=allow_ballpark,
             )
         finally:
             if pj_area_of_interest != NULL:
