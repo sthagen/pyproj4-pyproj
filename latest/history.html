@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Change Log &mdash; pyproj 3.1.dev0 documentation</title>
+  <title>Change Log &mdash; pyproj 3.1.1.dev0 documentation</title>
   
 
   
@@ -63,7 +63,7 @@
             
             
               <div class="version">
-                3.1.dev0
+                3.1.1.dev0
               </div>
             
           
@@ -102,6 +102,7 @@
 <li class="toctree-l1"><a class="reference internal" href="crs_compatibility.html">CRS Compatibility Guide for Geospatial Python</a></li>
 <li class="toctree-l1"><a class="reference internal" href="optimize_transformations.html">Optimize Transformations</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Change Log</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#latest">Latest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id1">3.1.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id2">3.0.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id3">3.0.0</a><ul>
@@ -216,6 +217,9 @@
             
   <div class="section" id="change-log">
 <h1>Change Log<a class="headerlink" href="#change-log" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="latest">
+<h2>Latest<a class="headerlink" href="#latest" title="Permalink to this headline">¶</a></h2>
+</div>
 <div class="section" id="id1">
 <h2>3.1.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
@@ -229,8 +233,9 @@
 <li><p>ENH: Added <a class="reference internal" href="api/crs/crs.html#pyproj.crs.CRS.to_3d" title="pyproj.crs.CRS.to_3d"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyproj.crs.CRS.to_3d()</span></code></a> (pull #808)</p></li>
 <li><p>ENH: Added <a class="reference internal" href="api/transformer.html#pyproj.transformer.Transformer.transform_bounds" title="pyproj.transformer.Transformer.transform_bounds"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyproj.transformer.Transformer.transform_bounds()</span></code></a> (issue #809)</p></li>
 <li><p>ENH: Added <a class="reference internal" href="api/crs/crs.html#pyproj.crs.CRS.is_compound" title="pyproj.crs.CRS.is_compound"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pyproj.crs.CRS.is_compound</span></code></a> (pull #823)</p></li>
+<li><p>ENH: Added <cite>initial_idx</cite> and <cite>terminal_index</cite> kwargs to <a class="reference internal" href="api/geod.html#pyproj.Geod.npts" title="pyproj.Geod.npts"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyproj.Geod.npts()</span></code></a> (pull #841)</p></li>
+<li><p>ENH: Added <a class="reference internal" href="api/geod.html#pyproj.Geod.inv_intermediate" title="pyproj.Geod.inv_intermediate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyproj.Geod.inv_intermediate()</span></code></a> &amp; <a class="reference internal" href="api/geod.html#pyproj.Geod.fwd_intermediate" title="pyproj.Geod.fwd_intermediate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyproj.Geod.fwd_intermediate()</span></code></a> (pull #841)</p></li>
 <li><p>REF: Skip transformations if <cite>noop</cite> &amp; deprecate <cite>skip_equivalent</cite> (pull #824)</p></li>
-<li><p>REF: Update <a class="reference internal" href="api/geod.html#pyproj.Geod.npts" title="pyproj.Geod.npts"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pyproj.Geod.npts()</span></code></a> to use <cite>geod_inverseline</cite> (pull #825)</p></li>
 </ul>
 </div>
 <div class="section" id="id2">
