@@ -77,7 +77,7 @@ Factors.__doc__ = """
 
 These are the scaling and angular distortion factors.
 
-See `PJ_FACTORS documentation <https://proj.org/development/reference/datatypes.html?highlight=pj_factors#c.PJ_FACTORS>`__  # noqa
+See PROJ :c:type:`PJ_FACTORS` documentation.
 
 Parameters
 ----------
@@ -575,11 +575,10 @@ cdef class _Transformer(Base):
 
         Parameters
         ----------
-        version: pyproj.enums.ProjVersion
+        version: pyproj.enums.ProjVersion, default=pyproj.enums.ProjVersion.PROJ_5
             The version of the PROJ string output.
-            Default is :attr:`pyproj.enums.ProjVersion.PROJ_5`.
-        pretty: bool
-            If True, it will set the output to be a multiline string. Defaults to False.
+        pretty: bool, default=False
+            If True, it will set the output to be a multiline string.
 
         Returns
         -------

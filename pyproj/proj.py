@@ -7,7 +7,7 @@ A Proj class instance is initialized with proj map projection
 control parameter key/value pairs. The key/value pairs can
 either be passed in a dictionary, or as keyword arguments,
 or as a PROJ string (compatible with the proj command). See
-https://proj.org/operations/projections/index.html for examples of
+:ref:`projections` for examples of
 key/value pairs defining different map projections.
 
 Calling a Proj class instance with the arguments lon, lat will
@@ -52,7 +52,7 @@ class Proj(Transformer):
         control parameter key/value pairs. The key/value pairs can
         either be passed in a dictionary, or as keyword arguments,
         or as a PROJ string (compatible with the proj command). See
-        https://proj.org/operations/projections/index.html for examples of
+        :ref:`projections` for examples of
         key/value pairs defining different map projections.
 
         Parameters
@@ -158,17 +158,17 @@ class Proj(Transformer):
             Input longitude coordinate(s).
         latitude: scalar or array (numpy or python)
             Input latitude coordinate(s).
-        inverse: boolean, optional
+        inverse: bool, default=False
             If inverse is True the inverse transformation from x/y to
-            lon/lat is performed. Default is False.
-        radians: boolean, optional
+            lon/lat is performed.
+        radians: bool, default=False
             If True, will expect input data to be in radians and will return radians
-            if the projection is geographic. Default is False (degrees).
+            if the projection is geographic. Otherwise, it uses degrees.
             This does not work with pyproj 2 and is ignored. It will be enabled again
             in pyproj 3.
-        errcheck: boolean, optional
-            If True an exception is raised if the errors are found in the process.
-            By default errcheck=False and ``inf`` is returned.
+        errcheck: bool, default=False
+            If True, an exception is raised if the errors are found in the process.
+            If False, ``inf`` is returned for errors.
 
         Returns
         -------
@@ -210,12 +210,12 @@ class Proj(Transformer):
             Input longitude coordinate(s).
         latitude: scalar or array (numpy or python)
             Input latitude coordinate(s).
-        radians: boolean, optional
-            If True, will expect input data to be in radians.
-            Default is False (degrees).
-        errcheck: boolean, optional
-            If True an exception is raised if the errors are found in the process.
-            By default errcheck=False and ``inf`` is returned.
+        radians: bool, default=False
+            If True, will expect input data to be in radians and will return radians
+            if the projection is geographic. Otherwise, it uses degrees.
+        errcheck: bool, default=False
+            If True, an exception is raised if the errors are found in the process.
+            If False, ``inf`` is returned on error.
 
         Returns
         -------
