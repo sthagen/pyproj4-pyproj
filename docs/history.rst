@@ -3,13 +3,15 @@ Change Log
 
 Latest
 ------
-- ENH: Allow cimport (pull #870)
 - REF: Handle deprecation of proj_context_set_autoclose_database (issue #866)
 - DOC: Improve FAQ text about CRS formats (issue #789)
 - BUG: Add PyPy cython array implementation (issue #854)
 - BUG: Fix spelling for
   :class:`pyproj.crs.coordinate_operation.AzimuthalEquidistantConversion`
   and :class:`pyproj.crs.coordinate_operation.LambertAzimuthalEqualAreaConversion` (issue #882)
+- BUG: Make datum name match exact in :func:`pyproj.database.query_utm_crs_info` (pull #887)
+- BUG: Update :class:`pyproj.enums.GeodIntermediateFlag` for future Python compatibility (issue #855)
+- BUG: Hide unnecessary PROJ ERROR from proj_crs_get_coordoperation (issue #873)
 
 3.1.0
 -----
