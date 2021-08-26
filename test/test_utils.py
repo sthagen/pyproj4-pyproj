@@ -5,12 +5,12 @@ import pytest
 from pandas import Series
 from xarray import DataArray
 
-from pyproj.utils import _copytobuffer, _copytobuffer_return_scalar
+from pyproj.utils import DataType, _copytobuffer, _copytobuffer_return_scalar
 
 
 @pytest.mark.parametrize("in_data", [numpy.array(1), 1])
 def test__copytobuffer_return_scalar(in_data):
-    assert _copytobuffer_return_scalar(in_data) == (array("d", [1]), True, False, False)
+    assert _copytobuffer_return_scalar(in_data) == (array("d", [1]), DataType.FLOAT)
 
 
 def test__copytobuffer_return_scalar__invalid():
@@ -19,17 +19,17 @@ def test__copytobuffer_return_scalar__invalid():
 
 
 @pytest.mark.parametrize(
-    "in_data, is_float, is_list, is_tuple",
+    "in_data, data_type",
     [
-        (numpy.array(1), True, False, False),
-        (DataArray(numpy.array(1)), True, False, False),
-        (1, True, False, False),
-        ([1], False, True, False),
-        ((1,), False, False, True),
+        (numpy.array(1), DataType.FLOAT),
+        (DataArray(numpy.array(1)), DataType.FLOAT),
+        (1, DataType.FLOAT),
+        ([1], DataType.LIST),
+        ((1,), DataType.TUPLE),
     ],
 )
-def test__copytobuffer(in_data, is_float, is_list, is_tuple):
-    assert _copytobuffer(in_data) == (array("d", [1]), is_float, is_list, is_tuple)
+def test__copytobuffer(in_data, data_type):
+    assert _copytobuffer(in_data) == (array("d", [1]), data_type)
 
 
 @pytest.mark.parametrize(
@@ -38,10 +38,16 @@ def test__copytobuffer(in_data, is_float, is_list, is_tuple):
 def test__copytobuffer__numpy_array(in_arr):
     assert _copytobuffer(in_arr) == (
         in_arr.astype("d").__array__(),
-        False,
-        False,
-        False,
+        DataType.ARRAY,
     )
+
+
+def test__copytobuffer__fortran_order():
+    data = numpy.ones((2, 4), dtype=numpy.float64, order="F")
+    converted_data, dtype = _copytobuffer(data)
+    assert data.flags.f_contiguous
+    assert not converted_data.flags.f_contiguous
+    assert converted_data.flags.c_contiguous
 
 
 def test__copytobuffer__invalid():

@@ -1,8 +1,7 @@
-from distutils.version import LooseVersion
-
 import numpy
 import pytest
 from numpy.testing import assert_almost_equal
+from packaging import version
 
 from pyproj import CRS
 from pyproj.crs import ProjectedCRS
@@ -692,13 +691,15 @@ def test_geos_crs_sweep():
 
 
 def test_geos_crs_fixed_angle_axis():
-    crs = CRS.from_cf(
-        dict(
-            grid_mapping_name="geostationary",
-            perspective_point_height=1,
-            fixed_angle_axis="y",
+    with pytest.warns(DeprecationWarning):
+        crs = CRS.from_cf(
+            dict(
+                grid_mapping_name="geostationary",
+                perspective_point_height=1,
+                fixed_angle_axis="y",
+            ),
+            errcheck=True,
         )
-    )
     expected_cf = {
         "semi_major_axis": 6378137.0,
         "semi_minor_axis": crs.ellipsoid.semi_minor_metre,
@@ -871,7 +872,7 @@ def test_osgb_1936():
             "Scale factor at natural origin"
         ],
     }
-    if PROJ_LOOSE_VERSION >= LooseVersion("8.0.1"):
+    if PROJ_LOOSE_VERSION >= version.parse("8.0.1"):
         expected_cf.update(
             geographic_crs_name="OSGB36",
             horizontal_datum_name="Ordnance Survey of Great Britain 1936",

@@ -6,6 +6,7 @@ import pytest
 
 import pyproj
 from pyproj import CRS
+from pyproj._crs import AuthorityMatchInfo
 from pyproj.crs import (
     CoordinateOperation,
     CoordinateSystem,
@@ -85,6 +86,11 @@ def test_from_string():
             epsg_init_crs.to_proj4()
             == "+proj=utm +zone=11 +datum=NAD83 +units=m +no_defs +type=crs"
         )
+
+
+def test_from_string__invalid():
+    with pytest.raises(CRSError, match="CRS input is not a string"):
+        CRS.from_string(4326)
 
 
 def test_initialize_projparams_with_kwargs():
@@ -1331,6 +1337,11 @@ def test_to_dict_from_dict():
         assert CRS.from_dict(cc.to_dict()).name == "unknown"
 
 
+def test_from_dict__invalid():
+    with pytest.raises(CRSError, match="CRS input is not a dict"):
+        CRS.from_dict(4326)
+
+
 @pytest.mark.parametrize(
     "class_type",
     [Datum, Ellipsoid, PrimeMeridian, CoordinateOperation, CoordinateSystem],
@@ -1512,3 +1523,9 @@ def test_inheritance__from_methods():
     assert_inheritance_valid(ChildCRS.from_json(CRS(4326).to_json()))
     assert_inheritance_valid(ChildCRS.from_json_dict(CRS(4326).to_json_dict()))
     assert_inheritance_valid(ChildCRS.from_wkt(CRS(4326).to_wkt()))
+
+
+def test_list_authority():
+    assert CRS("+proj=utm +zone=15").list_authority() == [
+        AuthorityMatchInfo(auth_name="EPSG", code="32615", confidence=70)
+    ]

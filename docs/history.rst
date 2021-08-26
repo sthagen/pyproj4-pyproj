@@ -8,6 +8,8 @@ Latest
 - REF: Make CRS methods inheritable (issue #847)
 - ENH: Added :attr:`pyproj.crs.CRS.is_derived` (pull #902)
 - ENH: Added :attr:`pyproj.crs.GeocentricCRS` (pull #903)
+- ENH: Added :attr:`pyproj.crs.CRS.list_authority` (issue #918)
+- PERF: Disable unnecessary copy in dtype conversion for buffer (pull #904)
 - DOC: Improve FAQ text about CRS formats (issue #789)
 - BUG: Add PyPy cython array implementation (issue #854)
 - BUG: Fix spelling for
@@ -17,6 +19,10 @@ Latest
 - BUG: Update :class:`pyproj.enums.GeodIntermediateFlag` for future Python compatibility (issue #855)
 - BUG: Hide unnecessary PROJ ERROR from proj_crs_get_coordoperation (issue #873)
 - BUG: Fix pickling for CRS builder classes (issue #897)
+- CLN: Remove `ignore_axis_order` kwarg from :meth:`pyproj.crs.CRS.is_exact_same` as it was added by accident (pull #904)
+- CLN: remove numeric/numarrays support (pull #908)
+- LNT: Add pylint & address issues (pull #909)
+- DEP: Remove distutils dependency (pull #917)
 
 3.1.0
 -----
