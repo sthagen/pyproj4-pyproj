@@ -155,7 +155,9 @@ def get_extension_modules():
 
     proj_version = get_proj_version(proj_dir)
     check_proj_version(proj_version)
-    proj_version_major, proj_version_minor, proj_version_patch = proj_version.split(".")
+    proj_version_major, proj_version_minor, proj_version_patch = parse_version(
+        proj_version
+    ).base_version.split(".")
 
     # setup extension options
     ext_options = {
