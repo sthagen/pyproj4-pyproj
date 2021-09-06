@@ -8,7 +8,7 @@ import re
 import warnings
 from collections import namedtuple
 
-from pyproj._compat cimport cstrencode, pystrdecode
+from pyproj._compat cimport cstrencode
 from pyproj._crs cimport (
     _CRS,
     Base,
@@ -32,9 +32,9 @@ _AUTH_CODE_RE = re.compile(r"(?P<authority>\w+)\:(?P<code>\w+)")
 cdef str pyproj_errno_string(PJ_CONTEXT* ctx, int err):
     # https://github.com/pyproj4/pyproj/issues/760
     IF CTE_PROJ_VERSION_MAJOR >= 8:
-        return pystrdecode(proj_context_errno_string(ctx, err))
+        return proj_context_errno_string(ctx, err)
     ELSE:
-        return pystrdecode(proj_errno_string(err))
+        return proj_errno_string(err)
 
 
 cdef dict _PJ_DIRECTION_MAP = {
@@ -120,8 +120,8 @@ cdef class _TransformerGroup:
 
     def __init__(
         self,
-        _CRS crs_from,
-        _CRS crs_to,
+        _CRS crs_from not None,
+        _CRS crs_to not None,
         bint always_xy=False,
         area_of_interest=None,
     ):
@@ -237,8 +237,8 @@ cdef PJ* proj_create_crs_to_crs(
     const char *source_crs_str,
     const char *target_crs_str,
     PJ_AREA *area,
-    authority,
-    accuracy,
+    str authority,
+    str accuracy,
     allow_ballpark,
 ):
     """
@@ -512,15 +512,15 @@ cdef class _Transformer(Base):
 
     @property
     def id(self):
-        return pystrdecode(self.proj_info.id)
+        return self.proj_info.id
 
     @property
     def description(self):
-        return pystrdecode(self.proj_info.description)
+        return self.proj_info.description
 
     @property
     def definition(self):
-        return pystrdecode(self.proj_info.definition)
+        return self.proj_info.definition
 
     @property
     def has_inverse(self):
@@ -566,7 +566,7 @@ cdef class _Transformer(Base):
         """
         return proj_context_is_network_enabled(self.context) == 1
 
-    def to_proj4(self, version=ProjVersion.PROJ_5, pretty=False):
+    def to_proj4(self, version=ProjVersion.PROJ_5, bint pretty=False):
         """
         Convert the projection to a PROJ string.
 
@@ -593,8 +593,8 @@ cdef class _Transformer(Base):
         const char* crs_to,
         bint always_xy=False,
         area_of_interest=None,
-        authority=None,
-        accuracy=None,
+        str authority=None,
+        str accuracy=None,
         allow_ballpark=None,
     ):
         """
@@ -672,7 +672,7 @@ cdef class _Transformer(Base):
         cdef _Transformer transformer = _Transformer()
         transformer.context = pyproj_context_create()
 
-        auth_match = _AUTH_CODE_RE.match(pystrdecode(proj_pipeline.strip()))
+        auth_match = _AUTH_CODE_RE.match(proj_pipeline.strip())
         if auth_match:
             # attempt to create coordinate operation from AUTH:CODE
             match_data = auth_match.groupdict()
@@ -691,7 +691,7 @@ cdef class _Transformer(Base):
                 proj_pipeline,
             )
         if transformer.projobj is NULL:
-            raise ProjError(f"Invalid projection {pystrdecode(proj_pipeline)}.")
+            raise ProjError(f"Invalid projection {proj_pipeline}.")
         transformer._initialize_from_projobj()
         return transformer
 
