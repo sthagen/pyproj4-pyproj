@@ -336,7 +336,8 @@ def _rotated_latitude_longitude(cf_params):
     return RotatedLatitudeLongitudeConversion(
         o_lat_p=cf_params["grid_north_pole_latitude"],
         o_lon_p=cf_params["grid_north_pole_longitude"],
-        lon_0=cf_params.get("north_pole_grid_longitude", 0.0),
+        # https://github.com/pyproj4/pyproj/issues/927
+        lon_0=cf_params.get("north_pole_grid_longitude", 0.0) + 180,
     )
 
 
@@ -626,7 +627,29 @@ def _rotated_latitude_longitude__to_cf(conversion):
         "grid_mapping_name": "rotated_latitude_longitude",
         "grid_north_pole_latitude": params["o_lat_p"],
         "grid_north_pole_longitude": params["o_lon_p"],
-        "north_pole_grid_longitude": params["lon_0"],
+        # https://github.com/pyproj4/pyproj/issues/927
+        "north_pole_grid_longitude": params["lon_0"] - 180,
+    }
+
+
+def _pole_rotation_netcdf__to_cf(conversion):
+    """
+    http://cfconventions.org/cf-conventions/cf-conventions.html#_rotated_pole
+
+    https://github.com/OSGeo/PROJ/pull/2835
+    """
+    params = _to_dict(conversion)
+    return {
+        "grid_mapping_name": "rotated_latitude_longitude",
+        "grid_north_pole_latitude": params[
+            "grid_north_pole_latitude_(netcdf_cf_convention)"
+        ],
+        "grid_north_pole_longitude": params[
+            "grid_north_pole_longitude_(netcdf_cf_convention)"
+        ],
+        "north_pole_grid_longitude": params[
+            "north_pole_grid_longitude_(netcdf_cf_convention)"
+        ],
     }
 
 
@@ -656,4 +679,5 @@ _INVERSE_GEOGRAPHIC_GRID_MAPPING_NAME_MAP = {
     "proj ob_tran o_proj=lonlat": _rotated_latitude_longitude__to_cf,
     "proj ob_tran o_proj=latlon": _rotated_latitude_longitude__to_cf,
     "proj ob_tran o_proj=latlong": _rotated_latitude_longitude__to_cf,
+    "pole rotation (netcdf cf convention)": _pole_rotation_netcdf__to_cf,
 }
