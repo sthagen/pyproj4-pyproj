@@ -20,6 +20,7 @@ from pyproj.transformer import AreaOfInterest, TransformerGroup
 from test.conftest import (
     PROJ_GTE_8,
     PROJ_GTE_81,
+    RGF93toWSG84,
     grids_available,
     proj_env,
     proj_network_env,
@@ -1161,12 +1162,12 @@ def test_transformer_authority_filter_warning():
     "input_string",
     [
         "EPSG:1671",
-        "RGF93 to WGS 84 (1)",
+        RGF93toWSG84,
         "urn:ogc:def:coordinateOperation:EPSG::1671",
     ],
 )
 def test_transformer_from_pipeline__input_types(input_string):
-    assert Transformer.from_pipeline(input_string).description == "RGF93 to WGS 84 (1)"
+    assert Transformer.from_pipeline(input_string).description == RGF93toWSG84
 
 
 @pytest.mark.parametrize(
@@ -1184,7 +1185,7 @@ def test_transformer_from_pipeline__wkt_json(method_name):
                 method_name,
             )()
         ).description
-        == "RGF93 to WGS 84 (1)"
+        == RGF93toWSG84
     )
 
 
@@ -1340,6 +1341,26 @@ def test_transform_bounds__ignore_inf(input_crs, expected_bounds):
     assert_almost_equal(
         transformer.transform_bounds(*crs.area_of_use.bounds),
         expected_bounds,
+        decimal=0,
+    )
+
+
+def test_transform_bounds__ignore_inf_geographic():
+    crs_wkt = (
+        'PROJCS["Interrupted_Goode_Homolosine",'
+        'GEOGCS["GCS_unnamed ellipse",DATUM["D_unknown",'
+        'SPHEROID["Unknown",6378137,298.257223563]],'
+        'PRIMEM["Greenwich",0],UNIT["Degree",0.0174532925199433]],'
+        'PROJECTION["Interrupted_Goode_Homolosine"],'
+        'UNIT["metre",1,AUTHORITY["EPSG","9001"]],'
+        'AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
+    )
+    transformer = Transformer.from_crs(crs_wkt, "EPSG:4326", always_xy=True)
+    assert_almost_equal(
+        transformer.transform_bounds(
+            left=-15028000.0, bottom=7515000.0, right=-14975000.0, top=7556000.0
+        ),
+        (-179.2133, 70.9345, -177.9054, 71.4364),
         decimal=0,
     )
 
