@@ -5,9 +5,9 @@ Python interface to  `PROJ <https://proj.org/>`_ (cartographic projections and c
 
 GitHub Repository: https://github.com/pyproj4/pyproj
 
-.. note:: Minimum supported PROJ version is 7.2.0
+.. note:: Minimum supported PROJ version is 8.0
 
-.. note:: Minimum supported Python version is 3.7
+.. note:: Minimum supported Python version is 3.8
 
 .. note:: pyproj 3 wheels do not include transformation grids.
           For migration assistance see: :ref:`transformation_grids`
