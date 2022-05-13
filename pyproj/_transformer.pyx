@@ -116,8 +116,11 @@ cdef class _TransformerGroup:
         self,
         _CRS crs_from not None,
         _CRS crs_to not None,
-        bint always_xy=False,
-        area_of_interest=None,
+        bint always_xy,
+        area_of_interest,
+        bint allow_ballpark,
+        str authority,
+        double accuracy,
     ):
         """
         From PROJ docs:
@@ -133,13 +136,18 @@ cdef class _TransformerGroup:
         cdef PJ_OBJ_LIST * pj_operations = NULL
         cdef PJ* pj_transform = NULL
         cdef PJ_CONTEXT* context = NULL
+        cdef const char* c_authority = NULL
         cdef int num_operations = 0
         cdef int is_instantiable = 0
         cdef double west_lon_degree, south_lat_degree, east_lon_degree, north_lat_degree
+
+        if authority is not None:
+            c_authority = authority
+
         try:
             operation_factory_context = proj_create_operation_factory_context(
                 self.context,
-                NULL,
+                c_authority,
             )
             if area_of_interest is not None:
                 if not isinstance(area_of_interest, AreaOfInterest):
@@ -159,7 +167,17 @@ cdef class _TransformerGroup:
                     east_lon_degree,
                     north_lat_degree,
                 )
-
+            if accuracy > 0:
+                proj_operation_factory_context_set_desired_accuracy(
+                    self.context,
+                    operation_factory_context,
+                    accuracy,
+                )
+            proj_operation_factory_context_set_allow_ballpark_transformations(
+                self.context,
+                operation_factory_context,
+                allow_ballpark,
+            )
             proj_operation_factory_context_set_grid_availability_use(
                 self.context,
                 operation_factory_context,
@@ -172,8 +190,8 @@ cdef class _TransformerGroup:
             )
             pj_operations = proj_create_operations(
                 self.context,
-                get_transform_crs(crs_from).projobj,
-                get_transform_crs(crs_to).projobj,
+                crs_from.projobj,
+                crs_to.projobj,
                 operation_factory_context,
             )
             num_operations = proj_list_get_count(pj_operations)
@@ -214,16 +232,6 @@ cdef class _TransformerGroup:
             if pj_operations != NULL:
                 proj_list_destroy(pj_operations)
             ProjError.clear()
-
-
-cdef _CRS get_transform_crs(_CRS in_crs):
-    for sub_crs in in_crs.sub_crs_list:
-        if (
-            not sub_crs.type_name.startswith("Temporal") and
-            not sub_crs.type_name.startswith("Temporal")
-        ):
-            return sub_crs.source_crs if sub_crs.is_bound else sub_crs
-    return in_crs.source_crs if in_crs.is_bound else in_crs
 
 
 cdef PJ* proj_create_crs_to_crs(

@@ -4,6 +4,8 @@ Change Log
 Latest
 -------
 - DEP: Minimum PROJ version 8.1 (issue #1011)
+- BUG: Fix transformer list for 3D transformations in :class:`pyproj.transformer.TransformerGroup` (discussion #1072)
+- ENH: Added authority, accuracy, and allow_ballpark kwargs to :class:`pyproj.transformer.TransformerGroup` (pull #1076)
 
 3.3.1
 -------
