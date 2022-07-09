@@ -21,7 +21,7 @@ The easiest methods for installing pyproj are:
   - The MacOS and Linux wheels are powered by
     `cibuildwheel <https://github.com/pypa/cibuildwheel>`__
     & `multibuild <https://github.com/multi-build/multibuild>`__
-  - The Windows wheels are built by `Christoph Gohlke <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`__
+  - The Windows wheels versions <= 3.3.x were built by `Christoph Gohlke <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`__
 
 
 2. Use `conda <https://conda.io/en/latest/>`__ with the `conda-forge <https://conda-forge.org/>`__ channel:
@@ -39,7 +39,7 @@ The easiest methods for installing pyproj are:
       anaconda/miniconda. Using envs make it easier to
       debug problems with packages and ensure the stability
       of your root env."
-        -- https://conda-forge.org/docs/user/tipsandtricks.html
+      -- https://conda-forge.org/docs/user/tipsandtricks.html
 
   .. warning::
       Avoid using `pip install` with a conda environment. If you encounter
@@ -47,7 +47,7 @@ The easiest methods for installing pyproj are:
       recipe: https://github.com/conda-forge/staged-recipes/
 
 
-  - `pypoj` is maintaned by the `pyproj-feedstock maintainers <http://github.com/conda-forge/pyproj-feedstock>`__
+  - `pyproj` is maintaned by the `pyproj-feedstock maintainers <http://github.com/conda-forge/pyproj-feedstock>`__
   - `PROJ` is maintaned by the `proj.4-feedstock maintainers <http://github.com/conda-forge/proj.4-feedstock>`__
 
 If these installation methods do not meet your needs, the section below provides further instructions
@@ -68,12 +68,12 @@ Version compatibility matrix:
 pyproj         PROJ
 ============   ============
 <= 1.9.6       <= 5.2
-2.0-2.1        6.0+
+2.0-2.1        6.0-7
 2.2-2.3        6.1-7
 2.4-2.6        6.2-7
 3.0.0          7.2
-3.0.1+         7.2+
-3.3.0+         8.0+
+3.0.1+         7.2-9
+3.3.0+         8.0-9
 3.4.0+         8.1+
 ============   ============
 
@@ -153,7 +153,7 @@ point to location of PROJ installation before running setup.py.
 If you have a previous version of PROJ installed alongside the current
 version of PROJ, the best way to avoid conflicts is to:
 
-    1. Remove the previous PROJ from `PATH` & unset the `PROJ_LIB` environment variable (temporarily)
+    1. Remove the previous PROJ from `PATH` & unset the `PROJ_DATA`` (PROJ 9.1+) | `PROJ_LIB` (PROJ<9.1) environment variables (temporarily)
     2. Install PROJ to the internal PROJ directory (pyproj/proj_dir)
     3. Set the environment variable :envvar:`PROJ_DIR` to point to the internal PROJ directory
     4. Set the environment variable :envvar:`PROJ_WHEEL` to true
