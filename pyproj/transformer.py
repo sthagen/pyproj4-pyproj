@@ -73,9 +73,13 @@ class TransformerUnsafe(TransformerMaker):
 
 
 @dataclass(frozen=True)
-class TransformerFromCRS(TransformerMaker):
+class TransformerFromCRS(  # pylint: disable=too-many-instance-attributes
+    TransformerMaker
+):
     """
     .. versionadded:: 3.1.0
+
+    .. versionadded:: 3.4.0 force_over
 
     Generates a Cython _Transformer class from input CRS data.
     """
@@ -87,6 +91,7 @@ class TransformerFromCRS(TransformerMaker):
     authority: Optional[str]
     accuracy: Optional[str]
     allow_ballpark: Optional[bool]
+    force_over: bool = False
 
     def __call__(self) -> _Transformer:
         """
@@ -102,6 +107,7 @@ class TransformerFromCRS(TransformerMaker):
             authority=self.authority,
             accuracy=self.accuracy,
             allow_ballpark=self.allow_ballpark,
+            force_over=self.force_over,
         )
 
 
@@ -424,11 +430,30 @@ class Transformer:
         """
         return self._transformer.operations
 
+    def get_last_used_operation(self) -> "Transformer":
+        """
+        .. versionadded:: 3.4.0
+
+        .. note:: Requires PROJ 9.1+
+
+        See: :c:func:`proj_trans_get_last_used_operation`
+
+        Returns
+        -------
+        Transformer:
+            The operation used in the transform call.
+        """
+        return Transformer(
+            TransformerUnsafe(self._transformer.get_last_used_operation())
+        )
+
     @property
     def is_network_enabled(self) -> bool:
         """
         .. versionadded:: 3.0.0
 
+        Returns
+        -------
         bool:
             If the network is enabled.
         """
@@ -520,12 +545,19 @@ class Transformer:
         authority: Optional[str] = None,
         accuracy: Optional[float] = None,
         allow_ballpark: Optional[bool] = None,
+        force_over: bool = False,
     ) -> "Transformer":
         """Make a Transformer from a :obj:`pyproj.crs.CRS` or input used to create one.
+
+        See:
+
+        - :c:func:`proj_create_crs_to_crs`
+        - :c:func:`proj_create_crs_to_crs_from_pj`
 
         .. versionadded:: 2.2.0 always_xy
         .. versionadded:: 2.3.0 area_of_interest
         .. versionadded:: 3.1.0 authority, accuracy, allow_ballpark
+        .. versionadded:: 3.4.0 force_over
 
         Parameters
         ----------
@@ -554,6 +586,9 @@ class Transformer:
         allow_ballpark: bool, optional
             Set to False to disallow the use of Ballpark transformation
             in the candidate coordinate operations. Default is to allow.
+        force_over: bool, default=False
+            If True, it will to force the +over flag on the transformation.
+            Requires PROJ 9+.
 
         Returns
         -------
@@ -569,6 +604,7 @@ class Transformer:
                 authority=authority,
                 accuracy=accuracy if accuracy is None else str(accuracy),
                 allow_ballpark=allow_ballpark,
+                force_over=force_over,
             )
         )
 
@@ -577,6 +613,11 @@ class Transformer:
         """Make a Transformer from a PROJ pipeline string.
 
         :ref:`pipeline`
+
+        See:
+
+        - :c:func:`proj_create`
+        - :c:func:`proj_create_from_database`
 
         .. versionadded:: 3.1.0 AUTH:CODE string suppor (e.g. EPSG:1671)
 
@@ -657,6 +698,8 @@ class Transformer:
     ):
         """
         Transform points between two coordinate systems.
+
+        See: :c:func:`proj_trans_generic`
 
         .. versionadded:: 2.1.1 errcheck
         .. versionadded:: 2.2.0 direction
@@ -787,6 +830,8 @@ class Transformer:
         """
         Iterator/generator version of the function pyproj.Transformer.transform.
 
+        See: :c:func:`proj_trans_generic`
+
         .. versionadded:: 2.1.1 errcheck
         .. versionadded:: 2.2.0 direction
 
@@ -915,6 +960,8 @@ class Transformer:
     ) -> Tuple[float, float, float, float]:
         """
         .. versionadded:: 3.1.0
+
+        See: :c:func:`proj_trans_bounds`
 
         Transform boundary densifying the edges to account for nonlinear
         transformations along these edges and extracting the outermost bounds.

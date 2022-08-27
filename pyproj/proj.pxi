@@ -18,6 +18,7 @@ cdef extern from "proj.h" nogil:
     PJ_CONTEXT *proj_context_create ()
     PJ_CONTEXT *proj_context_clone (PJ_CONTEXT *ctx)
     PJ_CONTEXT *proj_context_destroy (PJ_CONTEXT *ctx)
+    void proj_assign_context(PJ* pj, PJ_CONTEXT* ctx)
 
     ctypedef enum PJ_LOG_LEVEL:
         PJ_LOG_NONE  = 0
@@ -105,6 +106,20 @@ cdef extern from "proj.h" nogil:
         double *y, size_t sy, size_t ny,
         double *z, size_t sz, size_t nz,
         double *t, size_t st, size_t nt
+    )
+    int proj_trans_bounds(
+        PJ_CONTEXT* context,
+        PJ *P,
+        PJ_DIRECTION direction,
+        const double xmin,
+        const double ymin,
+        const double xmax,
+        const double ymax,
+        double* out_xmin,
+        double* out_ymin,
+        double* out_xmax,
+        double* out_ymax,
+        int densify_pts
     )
     ctypedef struct PJ_AREA
     PJ *proj_create_crs_to_crs_from_pj(
