@@ -4,6 +4,7 @@ Change Log
 Latest
 -------
 - WHL: Python 3.11 Wheels (issue #1110)
+- WHL: Wheels contain PROJ 9.1.0 (pull #1132)
 - DEP: Minimum PROJ version 8.2 (issue #1011)
 - BUG: Fix transformer list for 3D transformations in :class:`.TransformerGroup` (discussion #1072)
 - ENH: Added authority, accuracy, and allow_ballpark kwargs to :class:`.TransformerGroup` (pull #1076)
@@ -15,6 +16,7 @@ Latest
 - BUG: Add support for `PROJ_DATA` environment variable (issue #1097)
 - BUG: Ensure numpy masked arrays stay masked after projection (issue #1102)
 - BLD: Don't specify runtime_library_dirs on Cygwin (pull #1120)
+- BUG: Fix finding PROJ version with PROJ_LIB and PROJ 9.1+ (issue #1127)
 
 3.3.1
 -------
