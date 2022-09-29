@@ -654,7 +654,7 @@ def test_transform_group__missing_best():
         assert "ntv2_0" not in trans_group.transformers[0].definition
         assert "ntv2_0" in trans_group.unavailable_operations[0].to_proj4()
     else:
-        # assuming all grids avaiable or PROJ_NETWORK=ON
+        # assuming all grids available or PROJ_NETWORK=ON
         trans_group = pyproj.transformer.TransformerGroup(
             lat_lon_proj.crs, alaska_aea_proj.crs
         )
@@ -695,12 +695,19 @@ def test_transform_group__area_of_interest():
 @pytest.mark.grid
 def test_transformer_group__get_transform_crs():
     tg = TransformerGroup("epsg:4258", "epsg:7415")
-    if not grids_available("nl_nsgi_rdtrans2018.tif"):
-        assert len(tg.transformers) == 1
-    elif PROJ_GTE_91:
+    if grids_available(
+        "nl_nsgi_nlgeo2018.tif", "nl_nsgi_rdtrans2018.tif", check_all=True
+    ):
+        if PROJ_GTE_91:
+            assert len(tg.transformers) == 2
+        else:
+            assert len(tg.transformers) == 6
+    elif not PROJ_GTE_91 and grids_available("nl_nsgi_rdtrans2018.tif"):
         assert len(tg.transformers) == 2
+    elif not PROJ_GTE_91 and grids_available("nl_nsgi_nlgeo2018.tif"):
+        assert len(tg.transformers) == 4
     else:
-        assert len(tg.transformers) == 6
+        assert len(tg.transformers) == 1
 
 
 def test_transformer__area_of_interest():
