@@ -748,7 +748,7 @@ class Transformer:
         --------
 
         >>> from pyproj import Transformer
-        >>> transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
+        >>> transformer = Transformer.from_crs("EPSG:4326", "EPSG:3857")
         >>> x3, y3 = transformer.transform(33, 98)
         >>> f"{x3:.3f}  {y3:.3f}"
         '10909310.098  3895303.963'
@@ -781,7 +781,7 @@ class Transformer:
         >>> xpjr, ypjr, zpjr = transprojr.transform(xpj, ypj, zpj, radians=True)
         >>> f"{xpjr:.3f} {ypjr:.3f} {zpjr:.3f}"
         '-2704026.010 -4253051.810 3895878.820'
-        >>> transformer = Transformer.from_proj("epsg:4326", 4326)
+        >>> transformer = Transformer.from_proj("EPSG:4326", 4326)
         >>> xeq, yeq = transformer.transform(33, 98)
         >>> f"{xeq:.0f}  {yeq:.0f}"
         '33  98'
@@ -1243,7 +1243,7 @@ def transform(  # pylint: disable=invalid-name
             "See: https://pyproj4.github.io/pyproj/stable/"
             "gotchas.html#upgrading-to-pyproj-2-from-pyproj-1"
         ),
-        DeprecationWarning,
+        FutureWarning,
         stacklevel=2,
     )
     return Transformer.from_proj(p1, p2, always_xy=always_xy).transform(
@@ -1324,7 +1324,7 @@ def itransform(  # pylint: disable=invalid-name
             "See: https://pyproj4.github.io/pyproj/stable/"
             "gotchas.html#upgrading-to-pyproj-2-from-pyproj-1"
         ),
-        DeprecationWarning,
+        FutureWarning,
         stacklevel=2,
     )
     return Transformer.from_proj(p1, p2, always_xy=always_xy).itransform(
