@@ -3,6 +3,8 @@ import pickle
 from contextlib import contextmanager
 from pathlib import Path
 
+import numpy
+import pytest
 from packaging import version
 
 import pyproj
@@ -14,6 +16,7 @@ PROJ_GTE_9 = PROJ_LOOSE_VERSION >= version.parse("9.0.0")
 PROJ_GTE_901 = PROJ_LOOSE_VERSION >= version.parse("9.0.1")
 PROJ_GTE_91 = PROJ_LOOSE_VERSION >= version.parse("9.1")
 PROJ_GTE_911 = PROJ_LOOSE_VERSION >= version.parse("9.1.1")
+PROJ_GTE_92 = PROJ_LOOSE_VERSION >= version.parse("9.2.0")
 
 
 def unset_data_dir():
@@ -89,3 +92,35 @@ def assert_can_pickle(raw_obj, tmp_path):
         unpickled = pickle.load(f)
 
     assert raw_obj == unpickled
+
+
+def _make_1_element_array(data: float):
+    """
+    Turn the float into a 1-element array
+    """
+    return numpy.array([data])
+
+
+def _make_2_element_array(data: float):
+    """
+    Turn the float into a 2-element array
+    """
+    return numpy.array([data] * 2)
+
+
+@pytest.fixture(
+    params=[
+        float,
+        numpy.array,
+        _make_1_element_array,
+        _make_2_element_array,
+    ]
+)
+def scalar_and_array(request):
+    """
+    Ensure cython methods are tested
+    with scalar and arrays to trigger
+    point optimized functions as well
+    as the main functions supporting arrays.
+    """
+    return request.param

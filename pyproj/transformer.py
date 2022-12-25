@@ -20,6 +20,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, 
 from pyproj import CRS
 from pyproj._compat import cstrencode
 from pyproj._crs import AreaOfUse, CoordinateOperation
+from pyproj._datadir import _clear_proj_error
 from pyproj._transformer import (  # noqa: F401 pylint: disable=unused-import
     AreaOfInterest,
     _Transformer,
@@ -316,7 +317,7 @@ class Transformer:
         transformer_maker: Union[TransformerMaker, None] = None,
     ) -> None:
         if not isinstance(transformer_maker, TransformerMaker):
-            ProjError.clear()
+            _clear_proj_error()
             raise ProjError(
                 "Transformer must be initialized using: "
                 "'from_crs' or 'from_pipeline'."
@@ -789,6 +790,19 @@ class Transformer:
         '33  98'
 
         """
+        try:
+            # function optimized for point data
+            return self._transformer._transform_point(
+                inx=xx,
+                iny=yy,
+                inz=zz,
+                intime=tt,
+                direction=direction,
+                radians=radians,
+                errcheck=errcheck,
+            )
+        except TypeError:
+            pass
         # process inputs, making copies that support buffer API.
         inx, x_data_type = _copytobuffer(xx, inplace=inplace)
         iny, y_data_type = _copytobuffer(yy, inplace=inplace)
@@ -802,8 +816,8 @@ class Transformer:
             intime = None
         # call pj_transform.  inx,iny,inz buffers modified in place.
         self._transformer._transform(
-            inx,
-            iny,
+            inx=inx,
+            iny=iny,
             inz=inz,
             intime=intime,
             direction=direction,
@@ -1205,39 +1219,6 @@ def transform(  # pylint: disable=invalid-name
     geocentric coordinates, values of x and y are given in meters.
     z is always meters.
 
-    Example usage:
-
-    >>> from pyproj import Proj, transform
-    >>> # projection 1: UTM zone 15, grs80 ellipse, NAD83 datum
-    >>> # (defined by epsg code 26915)
-    >>> p1 = Proj('epsg:26915', preserve_units=False)
-    >>> # projection 2: UTM zone 15, clrk66 ellipse, NAD27 datum
-    >>> p2 = Proj('epsg:26715', preserve_units=False)
-    >>> # find x,y of Jefferson City, MO.
-    >>> x1, y1 = p1(-92.199881,38.56694)
-    >>> # transform this point to projection 2 coordinates.
-    >>> x2, y2 = transform(p1,p2,x1,y1)
-    >>> '%9.3f %11.3f' % (x1,y1)
-    '569704.566 4269024.671'
-    >>> '%9.3f %11.3f' % (x2,y2)
-    '569722.342 4268814.028'
-    >>> '%8.3f %5.3f' % p2(x2,y2,inverse=True)
-    ' -92.200 38.567'
-    >>> # process 3 points at a time in a tuple
-    >>> lats = (38.83,39.32,38.75) # Columbia, KC and StL Missouri
-    >>> lons = (-92.22,-94.72,-90.37)
-    >>> x1, y1 = p1(lons,lats)
-    >>> x2, y2 = transform(p1,p2,x1,y1)
-    >>> xy = x1+y1
-    >>> '%9.3f %9.3f %9.3f %11.3f %11.3f %11.3f' % xy
-    '567703.344 351730.944 728553.093 4298200.739 4353698.725 4292319.005'
-    >>> xy = x2+y2
-    >>> '%9.3f %9.3f %9.3f %11.3f %11.3f %11.3f' % xy
-    '567721.149 351747.558 728569.133 4297989.112 4353489.645 4292106.305'
-    >>> lons, lats = p2(x2,y2,inverse=True)
-    >>> xy = lons+lats
-    >>> '%8.3f %8.3f %8.3f %5.3f %5.3f %5.3f' % xy
-    ' -92.220  -94.720  -90.370 38.830 39.320 38.750'
     """
     warnings.warn(
         (

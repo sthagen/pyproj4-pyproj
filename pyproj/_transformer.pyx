@@ -18,7 +18,12 @@ from pyproj._crs cimport (
     _to_wkt,
     create_area_of_use,
 )
-from pyproj._datadir cimport pyproj_context_create, pyproj_context_destroy
+from pyproj._datadir cimport (
+    _clear_proj_error,
+    _get_proj_error,
+    pyproj_context_create,
+    pyproj_context_destroy,
+)
 
 from pyproj._datadir import _LOGGER
 from pyproj.aoi import AreaOfInterest
@@ -34,12 +39,6 @@ IF (CTE_PROJ_VERSION_MAJOR, CTE_PROJ_VERSION_MINOR) >= (9, 1):
     cdef extern from "proj.h" nogil:
         PJ* proj_trans_get_last_used_operation(PJ *P)
 
-
-cdef dict _PJ_DIRECTION_MAP = {
-    TransformDirection.FORWARD: PJ_FWD,
-    TransformDirection.INVERSE: PJ_INV,
-    TransformDirection.IDENT: PJ_IDENT,
-}
 
 cdef dict _TRANSFORMER_TYPE_MAP = {
     PJ_TYPE_UNKNOWN: "Unknown Transformer",
@@ -104,6 +103,23 @@ dy_dphi: List[float]
     Partial derivative of coordinate.
 """
 
+cdef PJ_DIRECTION get_pj_direction(object direction) except *:
+    # optimized lookup to avoid creating a new instance every time
+    # gh-1205
+    if not isinstance(direction, TransformDirection):
+        direction = TransformDirection.create(direction)
+
+    # to avoid __hash__ calls from a dictionary lookup,
+    # we can inline the small number of options for performance
+    if direction is TransformDirection.FORWARD:
+        return PJ_FWD
+    if direction is TransformDirection.INVERSE:
+        return PJ_INV
+    if direction is TransformDirection.IDENT:
+        return PJ_IDENT
+    raise KeyError(f"{direction} is not a valid TransformDirection")
+
+
 cdef class _TransformerGroup:
     def __cinit__(self):
         self.context = NULL
@@ -136,14 +152,18 @@ cdef class _TransformerGroup:
         with unknown accuracy are sorted last, whatever their area.
         """
         self.context = pyproj_context_create()
-        cdef PJ_OPERATION_FACTORY_CONTEXT* operation_factory_context = NULL
-        cdef PJ_OBJ_LIST * pj_operations = NULL
-        cdef PJ* pj_transform = NULL
-        cdef PJ_CONTEXT* context = NULL
-        cdef const char* c_authority = NULL
-        cdef int num_operations = 0
-        cdef int is_instantiable = 0
-        cdef double west_lon_degree, south_lat_degree, east_lon_degree, north_lat_degree
+        cdef:
+            PJ_OPERATION_FACTORY_CONTEXT* operation_factory_context = NULL
+            PJ_OBJ_LIST * pj_operations = NULL
+            PJ* pj_transform = NULL
+            PJ_CONTEXT* context = NULL
+            const char* c_authority = NULL
+            int num_operations = 0
+            int is_instantiable = 0
+            double west_lon_degree
+            double south_lat_degree
+            double east_lon_degree
+            double north_lat_degree
 
         if authority is not None:
             c_authority = authority
@@ -235,7 +255,7 @@ cdef class _TransformerGroup:
                 proj_operation_factory_context_destroy(operation_factory_context)
             if pj_operations != NULL:
                 proj_list_destroy(pj_operations)
-            ProjError.clear()
+            _clear_proj_error()
 
 
 cdef PJ* proj_create_crs_to_crs(
@@ -269,10 +289,12 @@ cdef PJ* proj_create_crs_to_crs(
         )
         return NULL
 
-    cdef const char* options[5]
-    cdef bytes b_authority
-    cdef bytes b_accuracy
-    cdef int options_index = 0
+    cdef:
+        const char* options[5]
+        bytes b_authority
+        bytes b_accuracy
+        int options_index = 0
+
     options[0] = NULL
     options[1] = NULL
     options[2] = NULL
@@ -325,7 +347,7 @@ cdef class _Transformer(Base):
         cdef PJ_TYPE transformer_type = proj_get_type(self.projobj)
         self.type_name = _TRANSFORMER_TYPE_MAP[transformer_type]
         self._set_base_info()
-        ProjError.clear()
+        _clear_proj_error()
 
     @property
     def id(self):
@@ -373,7 +395,7 @@ cdef class _Transformer(Base):
         if self._source_crs is not None:
             return None if self._source_crs is False else self._source_crs
         cdef PJ * projobj = proj_get_source_crs(self.context, self.projobj)
-        ProjError.clear()
+        _clear_proj_error()
         if projobj == NULL:
             self._source_crs = False
             return None
@@ -401,7 +423,7 @@ cdef class _Transformer(Base):
         if self._target_crs is not None:
             return None if self._target_crs is False else self._target_crs
         cdef PJ * projobj = proj_get_target_crs(self.context, self.projobj)
-        ProjError.clear()
+        _clear_proj_error()
         if projobj == NULL:
             self._target_crs = False
             return None
@@ -501,12 +523,14 @@ cdef class _Transformer(Base):
         """
         Create a transformer from CRS objects
         """
-        cdef PJ_AREA *pj_area_of_interest = NULL
-        cdef double west_lon_degree
-        cdef double south_lat_degree
-        cdef double east_lon_degree
-        cdef double north_lat_degree
-        cdef _Transformer transformer = _Transformer()
+        cdef:
+            PJ_AREA *pj_area_of_interest = NULL
+            double west_lon_degree
+            double south_lat_degree
+            double east_lon_degree
+            double north_lat_degree
+            _Transformer transformer = _Transformer()
+
         try:
             if area_of_interest is not None:
                 if not isinstance(area_of_interest, AreaOfInterest):
@@ -628,14 +652,17 @@ cdef class _Transformer(Base):
         if self.id == "noop":
             return
 
-        tmp_pj_direction = _PJ_DIRECTION_MAP[TransformDirection.create(direction)]
-        cdef PJ_DIRECTION pj_direction = <PJ_DIRECTION>tmp_pj_direction
-        cdef PyBuffWriteManager xbuff = PyBuffWriteManager(inx)
-        cdef PyBuffWriteManager ybuff = PyBuffWriteManager(iny)
+        cdef:
+            PJ_DIRECTION pj_direction = get_pj_direction(direction)
+            PyBuffWriteManager xbuff = PyBuffWriteManager(inx)
+            PyBuffWriteManager ybuff = PyBuffWriteManager(iny)
+            PyBuffWriteManager zbuff
+            PyBuffWriteManager tbuff
+            Py_ssize_t buflenz
+            Py_ssize_t buflent
+            double* zz
+            double* tt
 
-        cdef PyBuffWriteManager zbuff
-        cdef Py_ssize_t buflenz
-        cdef double* zz
         if inz is not None:
             zbuff = PyBuffWriteManager(inz)
             buflenz = zbuff.len
@@ -644,9 +671,6 @@ cdef class _Transformer(Base):
             buflenz = xbuff.len
             zz = NULL
 
-        cdef PyBuffWriteManager tbuff
-        cdef Py_ssize_t buflent
-        cdef double* tt
         if intime is not None:
             tbuff = PyBuffWriteManager(intime)
             buflent = tbuff.len
@@ -689,7 +713,7 @@ cdef class _Transformer(Base):
                     )
             elif errcheck:
                 with gil:
-                    if ProjError.internal_proj_error is not None:
+                    if _get_proj_error() is not None:
                         raise ProjError("transform error")
 
             # radians to degrees
@@ -702,7 +726,99 @@ cdef class _Transformer(Base):
                 for iii in range(xbuff.len):
                     xbuff.data[iii] = xbuff.data[iii]*_DG2RAD
                     ybuff.data[iii] = ybuff.data[iii]*_DG2RAD
-        ProjError.clear()
+        _clear_proj_error()
+
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
+    def _transform_point(
+        self,
+        object inx,
+        object iny,
+        object inz,
+        object intime,
+        object direction,
+        bint radians,
+        bint errcheck,
+    ):
+        """
+        Optimized to transform a single point between two coordinate systems.
+        """
+        cdef:
+            double coord_x = inx
+            double coord_y = iny
+            double coord_z = 0
+            double coord_t = HUGE_VAL
+            tuple expected_numeric_types = (int, float)
+
+        # We do the type-checking internally here due to automatically
+        # casting length-1 arrays to float that we don't want to return scalar for.
+        # Ex: float(np.array([0])) works and we don't want to accept numpy arrays
+        if not isinstance(inx, expected_numeric_types):
+            raise TypeError("Scalar input expected for x")
+        if not isinstance(iny, expected_numeric_types):
+            raise TypeError("Scalar input expected for y")
+        if inz is not None:
+            if not isinstance(inz, expected_numeric_types):
+                raise TypeError("Scalar input expected for z")
+            coord_z = inz
+        if intime is not None:
+            if not isinstance(intime, expected_numeric_types):
+                raise TypeError("Scalar input expected for t")
+            coord_t = intime
+
+        cdef tuple return_data
+        if self.id == "noop":
+            return_data = (inx, iny)
+            if inz is not None:
+                return_data += (inz,)
+            if intime is not None:
+                return_data += (intime,)
+            return return_data
+
+        cdef:
+            PJ_DIRECTION pj_direction = get_pj_direction(direction)
+            PJ_COORD projxyout
+            PJ_COORD projxyin = proj_coord(coord_x, coord_y, coord_z, coord_t)
+
+        with nogil:
+            # degrees to radians
+            if not radians and proj_angular_input(self.projobj, pj_direction):
+                projxyin.uv.u *= _DG2RAD
+                projxyin.uv.v *= _DG2RAD
+            # radians to degrees
+            elif radians and proj_degree_input(self.projobj, pj_direction):
+                projxyin.uv.u *= _RAD2DG
+                projxyin.uv.v *= _RAD2DG
+
+            proj_errno_reset(self.projobj)
+            projxyout = proj_trans(self.projobj, pj_direction, projxyin)
+            errno = proj_errno(self.projobj)
+            if errcheck and errno:
+                with gil:
+                    raise ProjError(
+                        f"transform error: {proj_context_errno_string(self.context, errno)}"
+                    )
+            elif errcheck:
+                with gil:
+                    if _clear_proj_error() is not None:
+                        raise ProjError("transform error")
+
+            # radians to degrees
+            if not radians and proj_angular_output(self.projobj, pj_direction):
+                projxyout.xy.x *= _RAD2DG
+                projxyout.xy.y *= _RAD2DG
+            # degrees to radians
+            elif radians and proj_degree_output(self.projobj, pj_direction):
+                projxyout.xy.x *= _DG2RAD
+                projxyout.xy.y *= _DG2RAD
+        _clear_proj_error()
+
+        return_data = (projxyout.xyzt.x, projxyout.xyzt.y)
+        if inz is not None:
+            return_data += (projxyout.xyzt.z,)
+        if intime is not None:
+            return_data += (projxyout.xyzt.t,)
+        return return_data
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -716,22 +832,27 @@ cdef class _Transformer(Base):
         bint radians,
         bint errcheck,
     ):
+        # private function to itransform function
         if self.id == "noop":
             return
-        tmp_pj_direction = _PJ_DIRECTION_MAP[TransformDirection.create(direction)]
-        cdef PJ_DIRECTION pj_direction = <PJ_DIRECTION>tmp_pj_direction
-        # private function to itransform function
-        cdef double *x
-        cdef double *y
-        cdef double *z
-        cdef double *tt
+
+        cdef:
+            PJ_DIRECTION pj_direction = get_pj_direction(direction)
+            double *x
+            double *y
+            double *z
+            double *tt
 
         if stride < 2:
             raise ProjError("coordinates must contain at least 2 values")
 
-        cdef PyBuffWriteManager coordbuff = PyBuffWriteManager(inseq)
-        cdef Py_ssize_t npts, iii, jjj
-        cdef int errno = 0
+        cdef:
+            PyBuffWriteManager coordbuff = PyBuffWriteManager(inseq)
+            Py_ssize_t npts
+            Py_ssize_t iii
+            Py_ssize_t jjj
+            int errno = 0
+
         npts = coordbuff.len // stride
         with nogil:
             # degrees to radians
@@ -784,7 +905,7 @@ cdef class _Transformer(Base):
                     )
             elif errcheck:
                 with gil:
-                    if ProjError.internal_proj_error is not None:
+                    if _get_proj_error() is not None:
                         raise ProjError("itransform error")
 
             # radians to degrees
@@ -800,7 +921,7 @@ cdef class _Transformer(Base):
                     coordbuff.data[jjj] *= _DG2RAD
                     coordbuff.data[jjj + 1] *= _DG2RAD
 
-        ProjError.clear()
+        _clear_proj_error()
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -815,18 +936,18 @@ cdef class _Transformer(Base):
         bint errcheck,
         object direction,
     ):
-        tmp_pj_direction = _PJ_DIRECTION_MAP[TransformDirection.create(direction)]
-        cdef PJ_DIRECTION pj_direction = <PJ_DIRECTION>tmp_pj_direction
+        cdef PJ_DIRECTION pj_direction = get_pj_direction(direction)
 
         if self.id == "noop" or pj_direction == PJ_IDENT:
             return (left, bottom, right, top)
 
-        cdef int errno = 0
-        cdef bint success = True
-        cdef double out_left = left
-        cdef double out_bottom = bottom
-        cdef double out_right = right
-        cdef double out_top = top
+        cdef:
+            int errno = 0
+            bint success = True
+            double out_left = left
+            double out_bottom = bottom
+            double out_right = right
+            double out_top = top
 
         with nogil:
             # degrees to radians
@@ -868,7 +989,7 @@ cdef class _Transformer(Base):
                         )
                 else:
                     with gil:
-                        if ProjError.internal_proj_error is not None:
+                        if _get_proj_error() is not None:
                             raise ProjError("transform bounds error")
 
             # radians to degrees
@@ -884,7 +1005,7 @@ cdef class _Transformer(Base):
                 out_right *= _DG2RAD
                 out_top *= _DG2RAD
 
-        ProjError.clear()
+        _clear_proj_error()
         return out_left, out_bottom, out_right, out_top
 
     @cython.boundscheck(False)
@@ -916,32 +1037,42 @@ cdef class _Transformer(Base):
         dx_dphi = copy.copy(longitude)
         dy_dlam = copy.copy(longitude)
         dy_dphi = copy.copy(longitude)
-        cdef PyBuffWriteManager meridional_scale_buff = PyBuffWriteManager(
-            meridional_scale)
-        cdef PyBuffWriteManager parallel_scale_buff = PyBuffWriteManager(
-            parallel_scale)
-        cdef PyBuffWriteManager areal_scale_buff = PyBuffWriteManager(areal_scale)
-        cdef PyBuffWriteManager angular_distortion_buff = PyBuffWriteManager(
-            angular_distortion)
-        cdef PyBuffWriteManager meridian_parallel_angle_buff = PyBuffWriteManager(
-            meridian_parallel_angle)
-        cdef PyBuffWriteManager meridian_convergence_buff = PyBuffWriteManager(
-            meridian_convergence)
-        cdef PyBuffWriteManager tissot_semimajor_buff = PyBuffWriteManager(
-            tissot_semimajor)
-        cdef PyBuffWriteManager tissot_semiminor_buff = PyBuffWriteManager(
-            tissot_semiminor)
-        cdef PyBuffWriteManager dx_dlam_buff = PyBuffWriteManager(dx_dlam)
-        cdef PyBuffWriteManager dx_dphi_buff = PyBuffWriteManager(dx_dphi)
-        cdef PyBuffWriteManager dy_dlam_buff = PyBuffWriteManager(dy_dlam)
-        cdef PyBuffWriteManager dy_dphi_buff = PyBuffWriteManager(dy_dphi)
 
-        # calculate the factors
-        cdef PJ_COORD pj_coord = proj_coord(0, 0, 0, HUGE_VAL)
-        cdef PJ_FACTORS pj_factors
-        cdef int errno = 0
-        cdef bint invalid_coord = 0
-        cdef Py_ssize_t iii
+        cdef:
+            PyBuffWriteManager meridional_scale_buff = PyBuffWriteManager(
+                meridional_scale
+            )
+            PyBuffWriteManager parallel_scale_buff = PyBuffWriteManager(
+                parallel_scale
+            )
+            PyBuffWriteManager areal_scale_buff = PyBuffWriteManager(areal_scale)
+            PyBuffWriteManager angular_distortion_buff = PyBuffWriteManager(
+                angular_distortion
+            )
+            PyBuffWriteManager meridian_parallel_angle_buff = PyBuffWriteManager(
+                meridian_parallel_angle
+            )
+            PyBuffWriteManager meridian_convergence_buff = PyBuffWriteManager(
+                meridian_convergence
+            )
+            PyBuffWriteManager tissot_semimajor_buff = PyBuffWriteManager(
+                tissot_semimajor
+            )
+            PyBuffWriteManager tissot_semiminor_buff = PyBuffWriteManager(
+                tissot_semiminor
+            )
+            PyBuffWriteManager dx_dlam_buff = PyBuffWriteManager(dx_dlam)
+            PyBuffWriteManager dx_dphi_buff = PyBuffWriteManager(dx_dphi)
+            PyBuffWriteManager dy_dlam_buff = PyBuffWriteManager(dy_dlam)
+            PyBuffWriteManager dy_dphi_buff = PyBuffWriteManager(dy_dphi)
+
+            # calculate the factors
+            PJ_COORD pj_coord = proj_coord(0, 0, 0, HUGE_VAL)
+            PJ_FACTORS pj_factors
+            int errno = 0
+            bint invalid_coord = 0
+            Py_ssize_t iii
+
         with nogil:
             for iii in range(lonbuff.len):
                 pj_coord.uv.u = lonbuff.data[iii]
@@ -1001,7 +1132,7 @@ cdef class _Transformer(Base):
                     dy_dlam_buff.data[iii] = pj_factors.dy_dlam
                     dy_dphi_buff.data[iii] = pj_factors.dy_dphi
 
-        ProjError.clear()
+        _clear_proj_error()
 
         return Factors(
             meridional_scale=meridional_scale,
