@@ -706,7 +706,7 @@ cdef class CoordinateSystem(_CRSParts):
 
         Returns
         -------
-        List[dict]:
+        list[dict]:
             CF-1.8 version of the CoordinateSystem.
         """
         axis_list = self.to_json_dict()["axis"]
@@ -2155,7 +2155,7 @@ cdef class CoordinateOperation(_CRSParts):
         """
         Returns
         -------
-        List[Param]:
+        list[Param]:
             The coordinate operation parameters.
         """
         if self._params is not None:
@@ -2182,7 +2182,7 @@ cdef class CoordinateOperation(_CRSParts):
         """
         Returns
         -------
-        List[Grid]:
+        list[Grid]:
             The coordinate operation grids.
         """
         if self._grids is not None:
@@ -2243,7 +2243,7 @@ cdef class CoordinateOperation(_CRSParts):
         """
         Returns
         -------
-        List[float]:
+        list[float]:
             A list of 3 or 7 towgs84 values if they exist.
 
         """
@@ -2273,7 +2273,7 @@ cdef class CoordinateOperation(_CRSParts):
 
         Returns
         -------
-        Tuple[CoordinateOperation]:
+        tuple[CoordinateOperation]:
             The operations in a concatenated operation.
 
         """
@@ -2411,7 +2411,7 @@ cdef class _CRS(Base):
 
         Returns
         -------
-        List[Axis]:
+        list[Axis]:
             The list of axis information.
         """
         axis_info_list = []
@@ -2643,7 +2643,7 @@ cdef class _CRS(Base):
 
         Returns
         -------
-        List[_CRS]
+        list[_CRS]
         """
         if self._sub_crs_list is not None:
             return self._sub_crs_list
@@ -2856,7 +2856,7 @@ cdef class _CRS(Base):
 
         Returns
         -------
-        List[AuthorityMatchInfo]:
+        list[AuthorityMatchInfo]:
             List of authority matches for the CRS.
         """
         # get list of possible matching projections
@@ -2964,6 +2964,44 @@ cdef class _CRS(Base):
         finally:
             proj_destroy(projobj)
         return crs_3d
+
+    def to_2d(self, str name=None):
+        """
+        .. versionadded:: 3.6.0
+
+        Convert the current CRS to the 2D version if it makes sense.
+
+        Parameters
+        ----------
+        name: str, optional
+            CRS name. If None, it will use the name of the original CRS.
+
+        Returns
+        -------
+        _CRS
+        """
+        cdef char* c_name = NULL
+        cdef bytes b_name
+        if name is not None:
+            b_name = cstrencode(name)
+            c_name = b_name
+
+        cdef PJ * projobj = proj_crs_demote_to_2D(
+            self.context, c_name, self.projobj
+        )
+        _clear_proj_error()
+        if projobj == NULL:
+            return self
+        try:
+            crs_2d = _CRS(_to_wkt(
+                self.context,
+                projobj,
+                version=WktVersion.WKT2_2019,
+                pretty=False,
+            ))
+        finally:
+            proj_destroy(projobj)
+        return crs_2d
 
     def _is_crs_property(
         self, str property_name, tuple property_types, int sub_crs_index=0

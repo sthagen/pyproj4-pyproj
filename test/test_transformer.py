@@ -1651,6 +1651,12 @@ def test_transformer_group_allow_ballpark_filter():
     assert not group.unavailable_operations
 
 
+def test_transformer_group_allow_superseded_filter():
+    default_group = TransformerGroup(4203, 4326)
+    superseded_group = TransformerGroup(4203, 4326, allow_superseded=True)
+    assert len(superseded_group.transformers) > len(default_group.transformers)
+
+
 def test_transformer_group_authority_filter():
     group = TransformerGroup("EPSG:4326", "EPSG:4258", authority="PROJ")
     assert len(group.transformers) == 1
