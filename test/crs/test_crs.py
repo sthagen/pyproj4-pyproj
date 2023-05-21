@@ -24,6 +24,7 @@ from test.conftest import (
     PROJ_GTE_91,
     PROJ_GTE_901,
     PROJ_GTE_911,
+    PROJ_GTE_921,
     assert_can_pickle,
     grids_available,
 )
@@ -231,6 +232,40 @@ def test_to_wkt_pretty():
     assert "\n" not in crs.to_wkt()
 
 
+@pytest.mark.parametrize(
+    "version, expected",
+    [
+        ("WKT1_GDAL", False),
+        ("WKT1_ESRI", False),
+        ("WKT2_2019", True),
+    ],
+)
+def test_to_wkt_with_axis_rule_4326(version, expected):
+    crs = CRS.from_epsg(4326)
+    axis = "AXIS"
+    assert (axis in crs.to_wkt(version)) == expected
+    assert (axis in crs.to_wkt(version, output_axis_rule=None)) == expected
+    assert axis in crs.to_wkt(version, output_axis_rule=True)
+    assert axis not in crs.to_wkt(version, output_axis_rule=False)
+
+
+@pytest.mark.parametrize(
+    "version, expected",
+    [
+        ("WKT1_GDAL", True),
+        ("WKT1_ESRI", False),
+        ("WKT2_2019", True),
+    ],
+)
+def test_to_wkt_with_axis_rule_32630(version, expected):
+    crs = CRS.from_epsg(32630)
+    axis = "AXIS"
+    assert (axis in crs.to_wkt(version)) == expected
+    assert (axis in crs.to_wkt(version, output_axis_rule=None)) == expected
+    assert axis in crs.to_wkt(version, output_axis_rule=True)
+    assert axis not in crs.to_wkt(version, output_axis_rule=False)
+
+
 def test_repr():
     with pytest.warns(FutureWarning):
         assert repr(CRS({"init": "EPSG:4326"})) == (
@@ -373,6 +408,8 @@ def test_datum_unknown():
         "+towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
     )
     datum_name = "Unknown based on WGS84 ellipsoid"
+    if PROJ_GTE_921:
+        datum_name = "Unknown based on WGS 84 ellipsoid"
     if PROJ_GTE_901:
         datum_name = f"{datum_name} using towgs84=0,0,0,0,0,0,0"
     assert crs.datum.name == datum_name
